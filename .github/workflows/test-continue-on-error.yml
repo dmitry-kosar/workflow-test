@@ -1,0 +1,122 @@
+name: Test continue-on-error reporting
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fake-job-1:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      job_status: ${{ steps.job-status.outputs.status }}
+    
+    steps:
+      - name: Run first critical operation
+        id: critical-operation-1
+        run: |
+          echo "This will fail intentionally"
+          exit 1
+      
+      - name: Run second critical operation
+        id: critical-operation-2
+        if: always()
+        run: |
+          echo "This operation might also fail"
+          # 50% chance of failure
+          if [ $((RANDOM % 2)) -eq 0 ]; then
+            exit 1
+          fi
+      
+      - name: Set job status
+        id: job-status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" == "success" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+  
+  fake-job-2:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    outputs:
+      job_status: ${{ steps.job-status.outputs.status }}
+    
+    steps:
+      - name: Run first critical operation
+        id: critical-operation-1
+        run: |
+          echo "This will also fail intentionally"
+          exit 1
+      
+      - name: Run second critical operation
+        id: critical-operation-2
+        if: always()
+        run: |
+          echo "This operation might also fail"
+          # 50% chance of failure
+          if [ $((RANDOM % 2)) -eq 0 ]; then
+            exit 1
+          fi
+      
+      - name: Set job status
+        id: job-status
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ "$JOB_STATUS" == "success" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+  
+  deployment-report:
+    runs-on: ubuntu-latest
+    if: always()
+    name: Test Deployment Status Report
+    needs: [fake-job-1, fake-job-2]
+
+    steps:
+      - name: Show job results
+        run: |
+          echo "Job 1 result: ${{ needs.fake-job-1.result }}"
+          echo "Job 2 result: ${{ needs.fake-job-2.result }}"
+          echo "Job 1 explicit status: ${{ needs.fake-job-1.outputs.job_status }}"
+          echo "Job 2 explicit status: ${{ needs.fake-job-2.outputs.job_status }}"
+          # Note: 'result' will be 'success' because of continue-on-error,
+          # but job_status will show the actual outcome
+
+      - name: Determine deployment status
+        id: deployment_status
+        run: |
+          statuses=(
+            ${{ needs.fake-job-1.outputs.job_status }}
+            ${{ needs.fake-job-2.outputs.job_status }}
+          )
+          hasNonSuccessStatus=false
+
+          for status in "${statuses[@]}"; do
+            if [ "$status" != "success" ]; then hasNonSuccessStatus=true; fi
+          done
+
+          if [ $hasNonSuccessStatus == "false" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          elif [[ "${statuses[*]}" =~ "cancelled" ]]; then
+            echo "status=cancelled" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report final status
+        run: |
+          echo "Final deployment status: ${{ steps.deployment_status.outputs.status }}"
+          
+          # This step will fail if the overall status is failure
+          if [ "${{ steps.deployment_status.outputs.status }}" == "failure" ]; then
+            echo "The deployment has failed!"
+            exit 1
+          fi 
