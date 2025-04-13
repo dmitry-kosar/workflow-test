@@ -1,0 +1,20 @@
+name: 'Set Job Status'
+description: 'Sets the job status output based on the actual job status'
+outputs:
+  status:
+    description: 'The job status (success or failure)'
+    value: ${{ steps.job-status.outputs.status }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Set job status
+      id: job-status
+      shell: bash
+      env:
+        JOB_STATUS: ${{ job.status }}
+      run: |
+        if [ "$JOB_STATUS" == "success" ]; then
+          echo "status=success" >> "$GITHUB_OUTPUT"
+        else
+          echo "status=failure" >> "$GITHUB_OUTPUT"
+        fi 

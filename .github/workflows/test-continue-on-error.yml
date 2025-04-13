@@ -11,6 +11,9 @@ jobs:
       job_status: ${{ steps.job-status.outputs.status }}
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
       - name: Run first critical operation
         id: critical-operation-1
         run: |
@@ -29,15 +32,7 @@ jobs:
       
       - name: Set job status
         id: job-status
-        if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [ "$JOB_STATUS" == "success" ]; then
-            echo "status=success" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=failure" >> "$GITHUB_OUTPUT"
-          fi
+        uses: ./.github/workflows/set-job-status
   
   fake-job-2:
     runs-on: ubuntu-latest
@@ -46,23 +41,18 @@ jobs:
       job_status: ${{ steps.job-status.outputs.status }}
     
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
       - name: Run first critical operation
         id: critical-operation-1
         run: |
           echo "This will not fail"
           exit 0
-      
+        
       - name: Set job status
         id: job-status
-        if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
-        run: |
-          if [ "$JOB_STATUS" == "success" ]; then
-            echo "status=success" >> "$GITHUB_OUTPUT"
-          else
-            echo "status=failure" >> "$GITHUB_OUTPUT"
-          fi
+        uses: ./.github/workflows/set-job-status
   
   deployment-report:
     runs-on: ubuntu-latest
