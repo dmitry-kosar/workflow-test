@@ -49,18 +49,8 @@ jobs:
       - name: Run first critical operation
         id: critical-operation-1
         run: |
-          echo "This will also fail intentionally"
-          exit 1
-      
-      - name: Run second critical operation
-        id: critical-operation-2
-        if: always()
-        run: |
-          echo "This operation might also fail"
-          # 50% chance of failure
-          if [ $((RANDOM % 2)) -eq 0 ]; then
-            exit 1
-          fi
+          echo "This will not fail"
+          exit 0
       
       - name: Set job status
         id: job-status
