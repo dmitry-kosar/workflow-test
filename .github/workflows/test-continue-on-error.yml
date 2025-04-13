@@ -32,6 +32,7 @@ jobs:
       
       - name: Set job status
         id: job-status
+        if: always()
         uses: ./.github/workflows/set-job-status
   
   fake-job-2:
@@ -52,6 +53,7 @@ jobs:
         
       - name: Set job status
         id: job-status
+        if: always()
         uses: ./.github/workflows/set-job-status
   
   deployment-report:
